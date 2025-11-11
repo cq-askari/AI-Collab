@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Team Collaboration Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Smaller, more compact fonts */
+        body { font-size: 14px; }
+        .message-content { font-size: 13px; line-height: 1.5; }
+        .ai-name { font-size: 11px; }
+        textarea { font-size: 13px; }
+        .sidebar-text { font-size: 12px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white border-r border-gray-300 flex flex-col overflow-y-auto shadow-sm">
+            <div class="p-4 border-b border-gray-300 bg-blue-50">
+                <h1 class="text-xl font-bold text-gray-900">🤖 AI Team</h1>
+                <p class="text-xs text-gray-600 mt-1">Collaborative Workspace</p>
+            </div>
+            
+            <div class="p-4 space-y-4">
+                <!-- Token Usage Warning -->
+                <div id="token-warning" class="hidden bg-yellow-50 border border-yellow-400 rounded p-2 text-xs">
+                    <div class="font-semibold text-yellow-900">⚠️ High Token Usage</div>
+                    <div id="token-details" class="mt-1 text-yellow-800"></div>
+                </div>
+
+                <!-- Team Members -->
+                <div class="space-y-2">
+                    <h3 class="text-sm font-semibold text-gray-700 sidebar-text">Team Members</h3>
+                    <label class="flex items-center gap-2 cursor-pointer sidebar-text text-gray-800">
+                        <input type="checkbox" class="ai-toggle" data-ai="claude" checked>
+                        <span>🟣 Claude</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer sidebar-text text-gray-800">
+                        <input type="checkbox" class="ai-toggle" data-ai="gemini" checked>
+                        <span>🔵 Gemini</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer sidebar-text text-gray-800">
+                        <input type="checkbox" class="ai-toggle" data-ai="chatgpt" checked>
+                        <span>🟢 ChatGPT</span>
+                    </label>
+                </div>
+
+                <!-- Model Selection -->
+                <div class="space-y-2">
+                    <h3 class="text-sm font-semibold text-gray-700 sidebar-text">Models</h3>
+                    <div class="text-xs text-gray-600 sidebar-text">
+                        <div>🟢 GPT: <span id="gpt-model">4o</span></div>
+                        <button onclick="toggleGPTModel()" class="text-blue-600 hover:text-blue-700 mt-1">
+                            Switch to cheaper
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Debate Mode -->
+                <div class="space-y-2">
+                    <h3 class="text-sm font-semibold text-gray-700 sidebar-text">Mode</h3>
+                    <label class="flex items-center gap-2 cursor-pointer sidebar-text text-gray-800">
+                        <input type="checkbox" id="debate-mode">
+                        <span>💬 Debate Mode</span>
+                    </label>
+                    <p class="text-xs text-gray-600 sidebar-text">AIs will challenge each other's ideas</p>
+                </div>
+
+                <!-- File Upload -->
+                <div class="space-y-2">
+                    <h3 class="text-sm font-semibold text-gray-700 sidebar-text">Files</h3>
+                    <input type="file" id="file-upload" class="hidden" accept=".txt,.pdf,.csv,.json,.md" multiple>
+                    <button onclick="document.getElementById('file-upload').click()" class="w-full px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs sidebar-text text-gray-800">
+                        📎 Upload Files
+                    </button>
+                    <div id="file-list" class="text-xs space-y-1"></div>
+                </div>
+
+                <!-- Token Stats -->
+                <div class="space-y-2">
+                    <h3 class="text-sm font-semibold text-gray-700 sidebar-text">Session Stats</h3>
+                    <div class="text-xs text-gray-600 space-y-1 sidebar-text">
+                        <div>Messages: <span id="msg-count">0</span></div>
+                        <div>Est. Tokens: <span id="token-count">0</span></div>
+                        <div class="text-xs text-gray-500">~$<span id="cost-estimate">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto p-4 border-t border-gray-300 space-y-2 bg-gray-50">
+                <button onclick="saveConversation()" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs sidebar-text">
+                    💾 Save Work
+                </button>
+                <button onclick="loadConversation()" class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs sidebar-text">
+                    📂 Load Work
+                </button>
+                <button onclick="exportConversation()" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs sidebar-text">
+                    📥 Export
+                </button>
+                <button onclick="showContext()" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs sidebar-text">
+                    📋 Project Context
+                </button>
+                <button onclick="showRoles()" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs sidebar-text">
+                    👥 Roles
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs sidebar-text text-gray-700">Backend:</span>
+                    <div id="status">
+                        <span class="text-xs text-yellow-600 sidebar-text">Checking...</span>
+                    </div>
+                </div>
+                <button onclick="checkHealth()" class="w-full px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-xs sidebar-text">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="chat-view" class="flex-1 flex flex-col bg-white">
+            <!-- Messages -->
+            <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                <div class="text-center text-gray-500 mt-20">
+                    <div class="text-6xl mb-4">🎬</div>
+                    <h2 class="text-xl font-semibold mb-2 text-gray-900">Direct Your AI Team!</h2>
+                    <p id="welcome-msg" class="text-gray-700">Use @mentions to orchestrate: @All, @Claude, @Gemini, @ChatGPT</p>
+                    <p class="text-sm mt-2 text-gray-600">Example: "@All: Create pitch @Claude: Refine it @ChatGPT: Translate to French"</p>
+                    <p class="text-sm mt-4 text-orange-600 font-semibold">💡 TIP: Send one @ directive at a time, then review and add your input before next step!</p>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="bg-white border-t border-gray-300 p-4 shadow-sm">
+                <div class="flex gap-2 mb-2">
+                    <textarea 
+                        id="input" 
+                        placeholder="Direct your team: @All: Task for everyone OR @Claude: Specific task OR sequential: @All: Step 1 @Claude: Step 2"
+                        class="flex-1 bg-white border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                        rows="3"
+                        onkeypress="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"
+                    ></textarea>
+                    <button 
+                        onclick="sendMessage()"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg px-6 font-semibold"
+                    >
+                        Send
+                    </button>
+                </div>
+                <div class="flex justify-between text-xs text-gray-600">
+                    <div class="flex gap-2">
+                        <span>Active: <span id="active-list">Claude, Gemini, ChatGPT</span></span>
+                        <button onclick="clearHistory()" class="text-orange-600 hover:text-orange-700 font-semibold" title="Clear conversation history to start fresh">
+                            🔄 Reset
+                        </button>
+                    </div>
+                    <button onclick="clearChat()" class="text-red-600 hover:text-red-700 font-semibold">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Context Panel -->
+        <div id="context-view" class="hidden flex-1 overflow-y-auto p-6 bg-gray-50">
+            <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
+                <h2 class="text-2xl font-bold mb-4 text-gray-900">📋 Project Context</h2>
+                <p class="text-gray-700 mb-6">Shared context and instructions for all AIs</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-gray-800">Project Context</label>
+                        <textarea 
+                            id="project-context" 
+                            class="w-full bg-white border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            rows="10"
+                            placeholder="Enter project background, constraints, goals, style guidelines, etc. This will be shared with all AIs."
+                        ></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button onclick="saveContext()" class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold">
+                        Save Context
+                    </button>
+                    <button onclick="showChat()" class="px-6 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                        Back to Chat
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles Panel -->
+        <div id="roles-view" class="hidden flex-1 overflow-y-auto p-6 bg-gray-50">
+            <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
+                <h2 class="text-2xl font-bold mb-4 text-gray-900">👥 AI Team Roles</h2>
+                <p class="text-gray-700 mb-6">Assign specialized roles to each AI team member</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-gray-800">🟣 Claude's Role</label>
+                        <textarea 
+                            id="claude-role" 
+                            class="w-full bg-white border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            rows="3"
+                            placeholder="e.g., You are a technical architect focused on system design..."
+                        ></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-gray-800">🔵 Gemini's Role</label>
+                        <textarea 
+                            id="gemini-role" 
+                            class="w-full bg-white border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            rows="3"
+                            placeholder="e.g., You are a UX designer focused on user experience..."
+                        ></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-gray-800">🟢 ChatGPT's Role</label>
+                        <textarea 
+                            id="chatgpt-role" 
+                            class="w-full bg-white border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            rows="3"
+                            placeholder="e.g., You are a product manager focused on business value..."
+                        ></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button onclick="saveRoles()" class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold">
+                        Save Roles
+                    </button>
+                    <button onclick="showChat()" class="px-6 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg">
+                        Back to Chat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let conversationHistory = [];
+        let uploadedFiles = [];
+        let projectContext = '';
+        let currentGPTModel = 'gpt-4o'; // Track current model
+        let messageCount = 0;
+        let estimatedTokens = 0;
+        let aiRoles = {
+            claude: 'You are a helpful AI assistant.',
+            gemini: 'You are a helpful AI assistant.',
+            chatgpt: 'You are a helpful AI assistant.'
+        };
+
+        // Load saved data
+        const savedRoles = localStorage.getItem('aiRoles');
+        if (savedRoles) {
+            aiRoles = JSON.parse(savedRoles);
+            document.getElementById('claude-role').value = aiRoles.claude;
+            document.getElementById('gemini-role').value = aiRoles.gemini;
+            document.getElementById('chatgpt-role').value = aiRoles.chatgpt;
+        }
+
+        const savedContext = localStorage.getItem('projectContext');
+        if (savedContext) {
+            projectContext = savedContext;
+            document.getElementById('project-context').value = projectContext;
+        }
+
+        // File upload handling
+        document.getElementById('file-upload').addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                const content = await readFileContent(file);
+                uploadedFiles.push({
+                    name: file.name,
+                    type: file.type,
+                    content: content
+                });
+            }
+            updateFileList();
+        });
+
+        async function readFileContent(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsText(file);
+            });
+        }
+
+        function updateFileList() {
+            const listDiv = document.getElementById('file-list');
+            listDiv.innerHTML = uploadedFiles.map((file, i) => `
+                <div class="flex items-center justify-between bg-gray-100 px-2 py-1 rounded border border-gray-300">
+                    <span class="truncate text-gray-800">${file.name}</span>
+                    <button onclick="removeFile(${i})" class="text-red-600 hover:text-red-700 font-bold">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        // Check server health on load
+        checkHealth();
+        
+        // Auto-save every 30 seconds
+        setInterval(autoSave, 30000);
+        
+        // Load last auto-save on startup
+        loadAutoSave();
+
+        // === NEW FUNCTIONS ===
+        
+        function autoSave() {
+            if (conversationHistory.length > 0) {
+                const autoSaveData = {
+                    conversation: conversationHistory,
+                    files: uploadedFiles,
+                    context: projectContext,
+                    roles: aiRoles,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('aiCollab_autoSave', JSON.stringify(autoSaveData));
+                console.log('Auto-saved at', new Date().toLocaleTimeString());
+            }
+        }
+        
+        function loadAutoSave() {
+            const autoSaved = localStorage.getItem('aiCollab_autoSave');
+            if (autoSaved) {
+                const data = JSON.parse(autoSaved);
+                const timestamp = new Date(data.timestamp);
+                const minutesAgo = Math.floor((new Date() - timestamp) / 60000);
+                
+                if (minutesAgo < 60 && confirm(`Found auto-saved work from ${minutesAgo} minutes ago. Load it?`)) {
+                    conversationHistory = data.conversation || [];
+                    uploadedFiles = data.files || [];
+                    projectContext = data.context || '';
+                    aiRoles = data.roles || aiRoles;
+                    
+                    // Rebuild UI
+                    rebuildConversationUI();
+                    updateFileList();
+                }
+            }
+        }
+        
+        function saveConversation() {
+            const name = prompt('Name this conversation:', 'AI Team Session ' + new Date().toLocaleDateString());
+            if (!name) return;
+            
+            const saveData = {
+                name: name,
+                conversation: conversationHistory,
+                files: uploadedFiles,
+                context: projectContext,
+                roles: aiRoles,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Get existing saves
+            const saves = JSON.parse(localStorage.getItem('aiCollab_saves') || '[]');
+            saves.push(saveData);
+            localStorage.setItem('aiCollab_saves', JSON.stringify(saves));
+            
+            alert(`✅ Saved as "${name}"`);
+        }
+        
+        function loadConversation() {
+            const saves = JSON.parse(localStorage.getItem('aiCollab_saves') || '[]');
+            
+            if (saves.length === 0) {
+                alert('No saved conversations found.');
+                return;
+            }
+            
+            // Create selection dialog
+            const options = saves.map((save, i) => {
+                const date = new Date(save.timestamp).toLocaleString();
+                return `${i + 1}. ${save.name} (${date})`;
+            }).join('\n');
+            
+            const selection = prompt(`Select conversation to load:\n\n${options}\n\nEnter number:`);
+            const index = parseInt(selection) - 1;
+            
+            if (index >= 0 && index < saves.length) {
+                const data = saves[index];
+                conversationHistory = data.conversation || [];
+                uploadedFiles = data.files || [];
+                projectContext = data.context || '';
+                aiRoles = data.roles || aiRoles;
+                
+                document.getElementById('project-context').value = projectContext;
+                document.getElementById('claude-role').value = aiRoles.claude;
+                document.getElementById('gemini-role').value = aiRoles.gemini;
+                document.getElementById('chatgpt-role').value = aiRoles.chatgpt;
+                
+                rebuildConversationUI();
+                updateFileList();
+                
+                alert(`✅ Loaded "${data.name}"`);
+            }
+        }
+        
+        function exportConversation() {
+            const exportText = conversationHistory.map(msg => {
+                return `${msg.role.toUpperCase()}: ${msg.content}\n`;
+            }).join('\n');
+            
+            const blob = new Blob([exportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-team-conversation-${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function rebuildConversationUI() {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            
+            conversationHistory.forEach(msg => {
+                if (msg.role === 'user') {
+                    addMessage('user', msg.content);
+                } else if (msg.role === 'assistant') {
+                    // Parse out AI name from content
+                    const match = msg.content.match(/=== (\w+)'S RESPONSE/);
+                    if (match) {
+                        const aiName = match[1].toLowerCase();
+                        const content = msg.content.replace(/=== \w+'S RESPONSE.*?===\n/gs, '');
+                        addMessage(aiName, content);
+                    }
+                }
+            });
+            
+            updateStats();
+        }
+        
+        function toggleGPTModel() {
+            if (currentGPTModel === 'gpt-4o') {
+                currentGPTModel = 'gpt-4o-mini';
+                document.getElementById('gpt-model').textContent = '4o-mini (cheaper)';
+                alert('✅ Switched to GPT-4o-mini\n\n15x cheaper, 2x faster!\nStill very capable for most tasks.');
+            } else {
+                currentGPTModel = 'gpt-4o';
+                document.getElementById('gpt-model').textContent = '4o';
+                alert('✅ Switched to GPT-4o\n\nMost capable, but more expensive.');
+            }
+        }
+        
+        function estimateTokens(text) {
+            // Rough estimate: ~4 characters per token
+            return Math.ceil(text.length / 4);
+        }
+        
+        function updateStats() {
+            messageCount = conversationHistory.filter(m => m.role === 'user').length;
+            estimatedTokens = conversationHistory.reduce((sum, msg) => {
+                return sum + estimateTokens(msg.content);
+            }, 0);
+            
+            // Rough cost estimate
+            // Claude Sonnet 4: $3/M input, $15/M output
+            // GPT-4o: $2.50/M input, $10/M output  
+            // GPT-4o-mini: $0.15/M input, $0.60/M output
+            // Gemini 2.5 Flash: ~$0.10/M
+            
+            const avgCostPerToken = currentGPTModel === 'gpt-4o' ? 0.000005 : 0.0000003;
+            const costEstimate = (estimatedTokens * avgCostPerToken).toFixed(2);
+            
+            document.getElementById('msg-count').textContent = messageCount;
+            document.getElementById('token-count').textContent = estimatedTokens.toLocaleString();
+            document.getElementById('cost-estimate').textContent = costEstimate;
+            
+            // Show warning if high usage
+            if (estimatedTokens > 50000) {
+                const warningDiv = document.getElementById('token-warning');
+                warningDiv.classList.remove('hidden');
+                document.getElementById('token-details').textContent = 
+                    `You've used ~${estimatedTokens.toLocaleString()} tokens. Consider switching to GPT-4o-mini to reduce costs.`;
+            }
+        }
+
+        // === END NEW FUNCTIONS ===
+
+        function showContext() {
+            document.getElementById('chat-view').classList.add('hidden');
+            document.getElementById('roles-view').classList.add('hidden');
+            document.getElementById('context-view').classList.remove('hidden');
+        }
+
+        function showRoles() {
+            document.getElementById('chat-view').classList.add('hidden');
+            document.getElementById('context-view').classList.add('hidden');
+            document.getElementById('roles-view').classList.remove('hidden');
+        }
+
+        function showChat() {
+            document.getElementById('roles-view').classList.add('hidden');
+            document.getElementById('context-view').classList.add('hidden');
+            document.getElementById('chat-view').classList.remove('hidden');
+        }
+
+        function saveContext() {
+            projectContext = document.getElementById('project-context').value;
+            localStorage.setItem('projectContext', projectContext);
+            alert('✅ Project context saved!');
+            showChat();
+        }
+
+        function saveRoles() {
+            aiRoles.claude = document.getElementById('claude-role').value || 'You are a helpful AI assistant.';
+            aiRoles.gemini = document.getElementById('gemini-role').value || 'You are a helpful AI assistant.';
+            aiRoles.chatgpt = document.getElementById('chatgpt-role').value || 'You are a helpful AI assistant.';
+            
+            localStorage.setItem('aiRoles', JSON.stringify(aiRoles));
+            
+            alert('✅ Roles saved successfully!');
+            showChat();
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('status');
+                if (data.status === 'healthy') {
+                    statusDiv.innerHTML = '<span class="text-xs text-green-600 sidebar-text">✅ Connected</span>';
+                } else {
+                    statusDiv.innerHTML = '<span class="text-xs text-red-600 sidebar-text">❌ Error</span>';
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = '<span class="text-xs text-red-600 sidebar-text">❌ Offline</span>';
+            }
+        }
+
+        function updateActiveList() {
+            const activeAIs = [];
+            document.querySelectorAll('.ai-toggle:checked').forEach(checkbox => {
+                const aiName = checkbox.dataset.ai;
+                activeAIs.push(aiName.charAt(0).toUpperCase() + aiName.slice(1));
+            });
+            document.getElementById('active-list').textContent = activeAIs.join(', ') || 'None';
+        }
+
+        document.querySelectorAll('.ai-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', updateActiveList);
+        });
+
+        // Parse @mentions and create execution plan
+        function parseDirectives(message) {
+            const directives = [];
+            const regex = /@(All|Claude|Gemini|ChatGPT):([^@]+)/gi;
+            let match;
+            
+            while ((match = regex.exec(message)) !== null) {
+                const target = match[1].toLowerCase();
+                const instruction = match[2].trim();
+                
+                if (target === 'all') {
+                    // Execute for all active AIs
+                    document.querySelectorAll('.ai-toggle:checked').forEach(checkbox => {
+                        directives.push({
+                            ai: checkbox.dataset.ai,
+                            instruction: instruction
+                        });
+                    });
+                } else {
+                    directives.push({
+                        ai: target,
+                        instruction: instruction
+                    });
+                }
+            }
+            
+            // If no @mentions found, send to all active AIs
+            if (directives.length === 0) {
+                const trimmedMsg = message.trim();
+                document.querySelectorAll('.ai-toggle:checked').forEach(checkbox => {
+                    directives.push({
+                        ai: checkbox.dataset.ai,
+                        instruction: trimmedMsg
+                    });
+                });
+            }
+            
+            return directives;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to UI
+            addMessage('user', message);
+            
+            input.value = '';
+            
+            // Parse directives
+            const directives = parseDirectives(message);
+            
+            // Add orchestration info if sequential
+            if (message.includes('@')) {
+                addMessage('system', `🎬 Executing ${directives.length} step(s) sequentially...`);
+            }
+            
+            // Execute directives in sequence
+            for (let i = 0; i < directives.length; i++) {
+                const directive = directives[i];
+                
+                // Show which step we're on
+                if (directives.length > 1) {
+                    addMessage('system', `📍 Step ${i + 1}/${directives.length}: ${directive.ai.toUpperCase()}`);
+                }
+                
+                await queryAI(directive.ai, directive.instruction);
+            }
+        }
+
+        async function queryAI(aiName, instruction) {
+            const loadingId = `loading-${aiName}-${Date.now()}`;
+            addMessage(aiName, '🤔 Thinking...', loadingId);
+            
+            // Build file context
+            let fileContext = '';
+            if (uploadedFiles.length > 0) {
+                fileContext = '\n\nUPLOADED FILES:\n';
+                uploadedFiles.forEach(file => {
+                    fileContext += `\n--- ${file.name} ---\n${file.content}\n`;
+                });
+            }
+            
+            // Build full instruction with file context
+            const fullInstruction = instruction + fileContext;
+            
+            // Add to conversation history with VERY clear attribution
+            conversationHistory.push({
+                role: 'user',
+                content: fullInstruction
+            });
+            
+            try {
+                const debateMode = document.getElementById('debate-mode').checked;
+                
+                // Build request body
+                const requestBody = {
+                    messages: conversationHistory,
+                    system_prompt: aiRoles[aiName],
+                    context: projectContext,
+                    debate_mode: debateMode
+                };
+                
+                // Add model selection for ChatGPT
+                if (aiName === 'chatgpt') {
+                    requestBody.model = currentGPTModel;
+                }
+                
+                const response = await fetch(`${API_URL}/api/${aiName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                // Remove loading message
+                document.getElementById(loadingId)?.remove();
+                
+                if (data.success) {
+                    addMessage(aiName, data.content);
+                    // Add with SUPER CLEAR attribution
+                    conversationHistory.push({
+                        role: 'assistant',
+                        content: `=== ${aiName.toUpperCase()}'S RESPONSE (NOT YOURS) ===\n${data.content}\n=== END OF ${aiName.toUpperCase()}'S RESPONSE ===`
+                    });
+                    updateStats(); // Update token counter
+                } else {
+                    // Better error messages
+                    let errorMsg = data.error;
+                    if (errorMsg.includes('rate_limit') || errorMsg.includes('429')) {
+                        errorMsg = '⚠️ Rate limit reached! Wait 60 seconds or switch to cheaper model.';
+                    } else if (errorMsg.includes('quota')) {
+                        errorMsg = '⚠️ API quota exceeded. Check your API key credits.';
+                    }
+                    addMessage(aiName, errorMsg, null, true);
+                }
+            } catch (error) {
+                document.getElementById(loadingId)?.remove();
+                addMessage(aiName, `❌ Connection Error: ${error.message}`, null, true);
+            }
+        }
+
+        function addMessage(sender, content, id = null, isError = false) {
+            const messagesDiv = document.getElementById('messages');
+            const welcomeMsg = messagesDiv.querySelector('.text-center');
+            if (welcomeMsg) welcomeMsg.remove();
+            
+            const messageDiv = document.createElement('div');
+            if (id) messageDiv.id = id;
+            
+            const colors = {
+                user: 'bg-blue-50 border border-blue-200',
+                claude: 'bg-purple-50 border-l-4 border-purple-500',
+                gemini: 'bg-blue-50 border-l-4 border-blue-500',
+                chatgpt: 'bg-green-50 border-l-4 border-green-500',
+                system: 'bg-gray-100 border-l-4 border-gray-400'
+            };
+            
+            const icons = {
+                user: '👤',
+                claude: '🟣',
+                gemini: '🔵',
+                chatgpt: '🟢',
+                system: '🎬'
+            };
+            
+            const names = {
+                user: 'You',
+                claude: 'CLAUDE',
+                gemini: 'GEMINI',
+                chatgpt: 'CHATGPT',
+                system: 'System'
+            };
+            
+            messageDiv.className = 'flex gap-3';
+            messageDiv.innerHTML = `
+                <div class="flex-shrink-0 text-xl">${icons[sender]}</div>
+                <div class="flex-1">
+                    <div class="font-bold text-xs mb-1 uppercase tracking-wide ai-name text-gray-700">${names[sender]}</div>
+                    <div class="p-3 rounded-lg ${colors[sender]} ${isError ? 'text-red-600' : 'text-gray-900'} message-content">
+                        ${content.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function clearChat() {
+            if (confirm('Clear all messages? (Your roles and context will be preserved)')) {
+                conversationHistory = [];
+                messageCount = 0;
+                estimatedTokens = 0;
+                updateStats();
+                document.getElementById('token-warning').classList.add('hidden');
+                document.getElementById('messages').innerHTML = `
+                    <div class="text-center text-gray-500 mt-20">
+                        <div class="text-6xl mb-4">🎬</div>
+                        <h2 class="text-xl font-semibold mb-2 text-gray-900">Direct Your AI Team!</h2>
+                        <p class="text-gray-700">Use @mentions to orchestrate: @All, @Claude, @Gemini, @ChatGPT</p>
+                        <p class="text-sm mt-2 text-gray-600">Example: "@All: Create pitch @Claude: Refine it @ChatGPT: Translate to French"</p>
+                        <p class="text-sm mt-4 text-orange-600 font-semibold">💡 TIP: Send one @ directive at a time, then review and add your input!</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearHistory() {
+            // Clear conversation history without confirmation - for quick resets
+            conversationHistory = [];
+            messageCount = 0;
+            estimatedTokens = 0;
+            updateStats();
+            document.getElementById('token-warning').classList.add('hidden');
+            
+            // Show brief notification
+            const messagesDiv = document.getElementById('messages');
+            const notification = document.createElement('div');
+            notification.className = 'text-center text-green-600 p-2 text-sm font-semibold';
+            notification.textContent = '✅ History cleared - AIs will start fresh';
+            messagesDiv.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
